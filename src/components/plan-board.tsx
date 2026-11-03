@@ -88,11 +88,12 @@ function ingredientNeedsFromItems(
   >();
 
   for (const item of items) {
-    if (item.entry.kind !== "recipe") continue;
-    if (!entryIsCounted(item.entry)) continue;
-    const recipe = recipes.find((r) => r.slug === item.entry.slug);
+    const entry = item.entry;
+    if (entry.kind !== "recipe") continue;
+    if (!entryIsCounted(entry)) continue;
+    const recipe = recipes.find((r) => r.slug === entry.slug);
     if (!recipe) continue;
-    const people = effectivePeople(item.entry, defaultPeople);
+    const people = effectivePeople(entry, defaultPeople);
     const factor = people / parseServes(recipe.servings);
     for (const ingredient of recipe.ingredients) {
       const nameKey = ingredient.name.trim().toLowerCase();
@@ -500,15 +501,16 @@ function ComingUpRow({
   defaultPeople: number;
   onOpenDay: () => void;
 }) {
-  const counted = entryIsCounted(item.entry);
-  const people = effectivePeople(item.entry, defaultPeople);
+  const entry = item.entry;
+  const counted = entryIsCounted(entry);
+  const people = effectivePeople(entry, defaultPeople);
   const recipe =
-    item.entry.kind === "recipe"
-      ? recipes.find((r) => r.slug === item.entry.slug)
+    entry.kind === "recipe"
+      ? recipes.find((r) => r.slug === entry.slug)
       : undefined;
   const label =
-    item.entry.kind === "note"
-      ? item.entry.text
+    entry.kind === "note"
+      ? entry.text
       : (recipe?.title ?? "Removed from catalogue");
 
   return (
