@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ChefHat } from "lucide-react";
 import { AppButton } from "@/components/app-button";
+import {
+  clearCookProgress,
+  readCookProgress,
+  saveCookProgress,
+} from "@/lib/cook-progress-store";
 import { useKeptRecipes, useRemovedSlugs } from "@/lib/use-kept-recipes";
 import {
   mergeRecipeLists,
@@ -20,6 +25,13 @@ function resolveServes(requested: number | null | undefined, baseServes: number)
     return Math.min(24, Math.round(requested));
   }
   return baseServes;
+}
+
+function initialStepIndex(slug: string, total: number) {
+  if (total <= 0) return 0;
+  const saved = readCookProgress();
+  if (!saved || saved.slug !== slug) return 0;
+  return Math.min(Math.max(0, saved.stepIndex), total - 1);
 }
 
 export function CookMode({
@@ -43,6 +55,7 @@ export function CookMode({
   const steps = live.steps;
   const total = steps.length;
   const [index, setIndex] = useState(0);
+  const [ready, setReady] = useState(false);
   const hasSteps = total > 0;
   const safeIndex = hasSteps ? Math.min(index, total - 1) : 0;
   const currentStep = hasSteps ? steps[safeIndex] : null;
@@ -50,6 +63,38 @@ export function CookMode({
   const isFirst = safeIndex <= 0;
   const isLast = hasSteps && safeIndex >= total - 1;
   const recipeHref = `/recipe/${live.slug}`;
+
+  useEffect(() => {
+    setIndex(initialStepIndex(live.slug, total));
+    setReady(true);
+  }, [live.slug, total]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!hasSteps) {
+      clearCookProgress(live.slug);
+      return;
+    }
+    saveCookProgress({
+      slug: live.slug,
+      title: live.title,
+      emoji: live.emoji,
+      stepIndex: safeIndex,
+      stepTotal: total,
+      serves: servesProp ?? serves,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [
+    hasSteps,
+    live.emoji,
+    live.slug,
+    live.title,
+    ready,
+    safeIndex,
+    serves,
+    servesProp,
+    total,
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,7 +218,10 @@ export function CookMode({
             </AppButton>
 
             {hasSteps && isLast ? (
-              <AppButton href={recipeHref}>
+              <AppButton
+                href={recipeHref}
+                onClick={() => clearCookProgress(live.slug)}
+              >
                 <Check className="size-4" />
                 Done
               </AppButton>

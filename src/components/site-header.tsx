@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BookOpen, CalendarDays, Plus } from "lucide-react";
 import { AppButton } from "@/components/app-button";
 import { BrandMark } from "@/design-system";
 
@@ -15,13 +16,18 @@ type NavId =
   | "profile"
   | "system";
 
-const links: { id: NavId; href: string; label: string }[] = [
-  { id: "kitchen", href: "/kitchen", label: "Recipes" },
-  { id: "keep", href: "/keep", label: "Add recipe" },
-  { id: "plan", href: "/plan", label: "Plan ahead" },
+const links: {
+  id: NavId;
+  href: string;
+  label: string;
+  icon: typeof BookOpen;
+}[] = [
+  { id: "kitchen", href: "/kitchen", label: "Recipes", icon: BookOpen },
+  { id: "keep", href: "/keep", label: "Add recipe", icon: Plus },
+  { id: "plan", href: "/plan", label: "Plan ahead", icon: CalendarDays },
 ];
 
-export function SiteHeader({ current = "home" }: { current?: NavId }) {
+export function SiteHeader({ current }: { current?: NavId }) {
   const activeId = current === "recipe" ? "kitchen" : current;
 
   return (
@@ -29,17 +35,21 @@ export function SiteHeader({ current = "home" }: { current?: NavId }) {
       <div className="page-shell page-shell-wide py-3">
         <nav aria-label="Main" className="site-nav">
           <BrandMark current={activeId === "home"} />
-          {links.map((link) => (
-            <AppButton
-              key={link.id}
-              href={link.href}
-              variant={activeId === link.id ? "primary" : "secondary"}
-              className="shrink-0"
-              aria-current={activeId === link.id ? "page" : undefined}
-            >
-              {link.label}
-            </AppButton>
-          ))}
+          {links.map((link) => {
+            const Icon = link.icon;
+            return (
+              <AppButton
+                key={link.id}
+                href={link.href}
+                variant={activeId === link.id ? "primary" : "secondary"}
+                className="shrink-0"
+                aria-current={activeId === link.id ? "page" : undefined}
+              >
+                <Icon className="size-4" aria-hidden />
+                {link.label}
+              </AppButton>
+            );
+          })}
           <Link
             href="/profile"
             aria-current={activeId === "profile" ? "page" : undefined}

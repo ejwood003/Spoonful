@@ -2,10 +2,12 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { AppButton } from "@/components/app-button";
-import { fieldClass } from "@/design-system";
+import { fieldClass, fieldCompactClass } from "@/design-system";
 import {
+  applyDefaultPeople,
   applyProfileName,
   applyTheme,
+  readDefaultPeople,
   themes,
 } from "@/components/theme-provider";
 
@@ -33,11 +35,18 @@ export function ProfileForm() {
     readTheme,
     () => "peach"
   );
+  const storedPeople = useSyncExternalStore(
+    subscribeProfile,
+    readDefaultPeople,
+    () => 4
+  );
   const [name, setName] = useState<string | null>(null);
   const [theme, setTheme] = useState<string | null>(null);
+  const [people, setPeople] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const liveName = name ?? storedName;
   const liveTheme = theme ?? storedTheme;
+  const livePeople = people ?? String(storedPeople);
 
   return (
     <form
@@ -46,7 +55,7 @@ export function ProfileForm() {
         event.preventDefault();
         applyProfileName(liveName.trim());
         applyTheme(liveTheme);
-        window.dispatchEvent(new Event("kept-profile"));
+        applyDefaultPeople(Number(livePeople));
         setSaved(true);
       }}
     >
@@ -69,6 +78,28 @@ export function ProfileForm() {
           }}
           placeholder="The cook this kitchen belongs to"
           className={fieldClass}
+        />
+      </label>
+
+      <label className="block max-w-[12rem]">
+        <span className="mb-2 block text-sm font-medium">
+          Default number of people
+        </span>
+        <p className="mb-3 text-sm text-muted-foreground">
+          How many you usually cook recipes for. Plan ahead starts from this.
+        </p>
+        <input
+          type="number"
+          min={1}
+          max={24}
+          inputMode="numeric"
+          value={livePeople}
+          onChange={(event) => {
+            setPeople(event.target.value);
+            setSaved(false);
+          }}
+          className={fieldCompactClass}
+          aria-label="Default number of people to cook recipes for"
         />
       </label>
 

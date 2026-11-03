@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   type ButtonHTMLAttributes,
+  type MouseEventHandler,
   type ReactNode,
   forwardRef,
 } from "react";
@@ -42,6 +43,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className={classes}
           aria-current={props["aria-current"]}
           aria-label={props["aria-label"]}
+          onClick={props.onClick as MouseEventHandler<HTMLAnchorElement> | undefined}
         >
           {children}
         </Link>

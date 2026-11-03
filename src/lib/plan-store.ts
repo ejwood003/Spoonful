@@ -1,16 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-export const PLAN_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
-
-export const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "dessert"] as const;
+export const MEAL_SLOTS = ["dinner", "lunch", "breakfast", "dessert"] as const;
 
 export const SLOT_LABELS: Record<MealSlot, string> = {
   breakfast: "Breakfast",
@@ -19,12 +9,26 @@ export const SLOT_LABELS: Record<MealSlot, string> = {
   dessert: "Dessert",
 };
 
-export type PlanDay = (typeof PLAN_DAYS)[number];
+export const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
 export type MealSlot = (typeof MEAL_SLOTS)[number];
+/** ISO date string YYYY-MM-DD */
+export type PlanDate = string;
+
+type MealEntryBase = {
+  id: string;
+  /**
+   * Headcount for this item. null/undefined means use the plan default.
+   * A concrete number means the user overrode it.
+   */
+  people?: number | null;
+  /** When false, excluded from What you need. Defaults to true. */
+  counted?: boolean;
+};
 
 export type MealEntry =
-  | { id: string; kind: "recipe"; slug: string }
-  | { id: string; kind: "note"; text: string };
+  | (MealEntryBase & { kind: "recipe"; slug: string })
+  | (MealEntryBase & { kind: "note"; text: string });
 
 export type DayMeals = {
   breakfast: MealEntry[];
@@ -34,15 +38,26 @@ export type DayMeals = {
   dessertOpen: boolean;
 };
 
-export type WeekPlan = Record<PlanDay, DayMeals>;
+/** Sparse map of ISO date → meals */
+export type DatePlan = Record<PlanDate, DayMeals>;
 
-const STORAGE_KEY = "kept-prototype-plan";
+export type PlannedItem = {
+  date: PlanDate;
+  slot: MealSlot;
+  entry: MealEntry;
+};
+
+const STORAGE_KEY = "kept-prototype-plan-dates";
 
 let snapshotRaw: string | null = null;
-let snapshotPlan: WeekPlan = emptyPlan();
+let snapshotPlan: DatePlan = {};
 const listeners = new Set<() => void>();
 
-function emptyDay(): DayMeals {
+function newId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+export function emptyDay(): DayMeals {
   return {
     breakfast: [],
     lunch: [],
@@ -52,20 +67,123 @@ function emptyDay(): DayMeals {
   };
 }
 
-function emptyPlan(): WeekPlan {
-  return {
-    Monday: emptyDay(),
-    Tuesday: emptyDay(),
-    Wednesday: emptyDay(),
-    Thursday: emptyDay(),
-    Friday: emptyDay(),
-    Saturday: emptyDay(),
-    Sunday: emptyDay(),
-  };
+function pad(n: number) {
+  return String(n).padStart(2, "0");
 }
 
-function newId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+export function toISODate(date: Date): PlanDate {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+export function parseISODate(value: PlanDate): Date {
+  const [y, m, d] = value.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+export function addDaysISO(value: PlanDate, days: number): PlanDate {
+  const date = parseISODate(value);
+  date.setDate(date.getDate() + days);
+  return toISODate(date);
+}
+
+/** Monday of the week containing `date` (local). */
+export function startOfWeekMonday(date = new Date()): Date {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = next.getDay(); // 0 Sun … 6 Sat
+  const offset = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + offset);
+  return next;
+}
+
+export function defaultPlanWindow(today = new Date()) {
+  const start = startOfWeekMonday(today);
+  const from = toISODate(start);
+  const to = addDaysISO(from, 13);
+  return { from, to };
+}
+
+export function calendarWeeks(today = new Date()): [PlanDate[], PlanDate[]] {
+  const { from } = defaultPlanWindow(today);
+  const week1 = Array.from({ length: 7 }, (_, i) => addDaysISO(from, i));
+  const week2 = Array.from({ length: 7 }, (_, i) => addDaysISO(from, i + 7));
+  return [week1, week2];
+}
+
+export function daysInRange(from: PlanDate, to: PlanDate): PlanDate[] {
+  let start = from;
+  let end = to;
+  if (start > end) {
+    [start, end] = [end, start];
+  }
+  const days: PlanDate[] = [];
+  let cursor = start;
+  while (cursor <= end) {
+    days.push(cursor);
+    cursor = addDaysISO(cursor, 1);
+    if (days.length > 60) break;
+  }
+  return days;
+}
+
+const WEEKDAYS_LONG = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MONTHS_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+export function formatPlanDayLabel(date: PlanDate, style: "short" | "long" = "long") {
+  const parsed = parseISODate(date);
+  const weekday =
+    style === "short"
+      ? WEEKDAYS_SHORT[parsed.getDay()]
+      : WEEKDAYS_LONG[parsed.getDay()];
+  const month = MONTHS_SHORT[parsed.getMonth()];
+  const day = parsed.getDate();
+  return `${weekday}, ${month} ${day}`;
+}
+
+export function isToday(date: PlanDate, today = new Date()) {
+  return date === toISODate(today);
+}
+
+export function dayMealCount(day: DayMeals) {
+  return MEAL_SLOTS.reduce((count, slot) => count + day[slot].length, 0);
+}
+
+function normalizePeople(value: unknown): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.min(24, Math.round(n));
+}
+
+export function entryIsCounted(entry: MealEntry) {
+  return entry.counted !== false;
+}
+
+export function effectivePeople(entry: MealEntry, defaultPeople: number) {
+  const override = normalizePeople(entry.people ?? null);
+  if (override != null) return override;
+  return Math.max(1, Math.min(24, Math.round(defaultPeople) || 1));
 }
 
 function asEntries(value: unknown): MealEntry[] {
@@ -77,23 +195,42 @@ function asEntries(value: unknown): MealEntry[] {
     if (!item || typeof item !== "object") {
       continue;
     }
-    const entry = item as { id?: string; kind?: string; slug?: string; text?: string };
+    const entry = item as {
+      id?: string;
+      kind?: string;
+      slug?: string;
+      text?: string;
+      people?: unknown;
+      counted?: unknown;
+    };
+    const people = normalizePeople(entry.people);
+    const counted = entry.counted === false ? false : true;
     if (entry.kind === "recipe" && typeof entry.slug === "string") {
-      entries.push({ id: entry.id || newId(), kind: "recipe", slug: entry.slug });
-    } else if (entry.kind === "note" && typeof entry.text === "string" && entry.text.trim()) {
-      entries.push({ id: entry.id || newId(), kind: "note", text: entry.text.trim() });
+      entries.push({
+        id: entry.id || newId(),
+        kind: "recipe",
+        slug: entry.slug,
+        people,
+        counted,
+      });
+    } else if (
+      entry.kind === "note" &&
+      typeof entry.text === "string" &&
+      entry.text.trim()
+    ) {
+      entries.push({
+        id: entry.id || newId(),
+        kind: "note",
+        text: entry.text.trim(),
+        people,
+        counted,
+      });
     }
   }
   return entries;
 }
 
 function normalizeDay(value: unknown): DayMeals {
-  if (typeof value === "string" && value.trim()) {
-    return {
-      ...emptyDay(),
-      dinner: [{ id: `kept-${value}`, kind: "recipe", slug: value }],
-    };
-  }
   if (!value || typeof value !== "object") {
     return emptyDay();
   }
@@ -108,11 +245,26 @@ function normalizeDay(value: unknown): DayMeals {
   };
 }
 
-function normalizePlan(parsed: unknown): WeekPlan {
-  const source = parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
-  const next = emptyPlan();
-  for (const day of PLAN_DAYS) {
-    next[day] = normalizeDay(source[day]);
+function isISODateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normalizePlan(parsed: unknown): DatePlan {
+  if (!parsed || typeof parsed !== "object") {
+    return {};
+  }
+  const source = parsed as Record<string, unknown>;
+  const next: DatePlan = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (!isISODateKey(key)) continue;
+    const day = normalizeDay(value);
+    if (
+      dayMealCount(day) === 0 &&
+      !day.dessertOpen
+    ) {
+      continue;
+    }
+    next[key] = day;
   }
   return next;
 }
@@ -136,7 +288,7 @@ export function subscribePlan(onStoreChange: () => void) {
   };
 }
 
-export function readWeekPlan(): WeekPlan {
+export function readDatePlan(): DatePlan {
   if (typeof window === "undefined") {
     return snapshotPlan;
   }
@@ -150,12 +302,12 @@ export function readWeekPlan(): WeekPlan {
   try {
     snapshotPlan = normalizePlan(raw ? JSON.parse(raw) : {});
   } catch {
-    snapshotPlan = emptyPlan();
+    snapshotPlan = {};
   }
   return snapshotPlan;
 }
 
-export function saveWeekPlan(plan: WeekPlan) {
+export function saveDatePlan(plan: DatePlan) {
   const next = normalizePlan(plan);
   const raw = JSON.stringify(next);
   window.localStorage.setItem(STORAGE_KEY, raw);
@@ -164,13 +316,24 @@ export function saveWeekPlan(plan: WeekPlan) {
   emit();
 }
 
-function updateDay(day: PlanDay, recipe: (current: DayMeals) => DayMeals) {
-  const plan = readWeekPlan();
-  saveWeekPlan({ ...plan, [day]: recipe(plan[day]) });
+export function getDayMeals(plan: DatePlan, date: PlanDate): DayMeals {
+  return plan[date] ?? emptyDay();
 }
 
-export function addPlanRecipe(day: PlanDay, slot: MealSlot, slug: string) {
-  updateDay(day, (current) => {
+function updateDay(date: PlanDate, recipe: (current: DayMeals) => DayMeals) {
+  const plan = readDatePlan();
+  const nextDay = recipe(getDayMeals(plan, date));
+  const next = { ...plan };
+  if (dayMealCount(nextDay) === 0 && !nextDay.dessertOpen) {
+    delete next[date];
+  } else {
+    next[date] = nextDay;
+  }
+  saveDatePlan(next);
+}
+
+export function addPlanRecipe(date: PlanDate, slot: MealSlot, slug: string) {
+  updateDay(date, (current) => {
     const entries = current[slot];
     if (entries.some((entry) => entry.kind === "recipe" && entry.slug === slug)) {
       return slot === "dessert" ? { ...current, dessertOpen: true } : current;
@@ -178,37 +341,86 @@ export function addPlanRecipe(day: PlanDay, slot: MealSlot, slug: string) {
     return {
       ...current,
       dessertOpen: current.dessertOpen || slot === "dessert",
-      [slot]: [...entries, { id: newId(), kind: "recipe", slug }],
+      [slot]: [
+        ...entries,
+        {
+          id: newId(),
+          kind: "recipe" as const,
+          slug,
+          people: null,
+          counted: true,
+        },
+      ],
     };
   });
 }
 
-export function addPlanNote(day: PlanDay, slot: MealSlot, text: string) {
+export function addPlanCustom(date: PlanDate, slot: MealSlot, text: string) {
   const note = text.trim();
-  if (!note) {
-    return;
-  }
-  updateDay(day, (current) => ({
+  if (!note) return;
+  updateDay(date, (current) => ({
     ...current,
     dessertOpen: current.dessertOpen || slot === "dessert",
-    [slot]: [...current[slot], { id: newId(), kind: "note", text: note }],
+    [slot]: [
+      ...current[slot],
+      {
+        id: newId(),
+        kind: "note" as const,
+        text: note,
+        people: null,
+        counted: true,
+      },
+    ],
   }));
 }
 
-export function removePlanEntry(day: PlanDay, slot: MealSlot, id: string) {
-  updateDay(day, (current) => ({
+export function removePlanEntry(date: PlanDate, slot: MealSlot, id: string) {
+  updateDay(date, (current) => ({
     ...current,
     [slot]: current[slot].filter((entry) => entry.id !== id),
   }));
 }
 
-export function removeRecipeFromPlan(slug: string) {
-  const plan = readWeekPlan();
-  let changed = false;
-  const next = emptyPlan();
+function patchEntry(
+  date: PlanDate,
+  slot: MealSlot,
+  id: string,
+  patch: (entry: MealEntry) => MealEntry
+) {
+  updateDay(date, (current) => ({
+    ...current,
+    [slot]: current[slot].map((entry) =>
+      entry.id === id ? patch(entry) : entry
+    ),
+  }));
+}
 
-  for (const day of PLAN_DAYS) {
-    const current = plan[day];
+export function setPlanEntryCounted(
+  date: PlanDate,
+  slot: MealSlot,
+  id: string,
+  counted: boolean
+) {
+  patchEntry(date, slot, id, (entry) => ({ ...entry, counted }));
+}
+
+export function setPlanEntryPeople(
+  date: PlanDate,
+  slot: MealSlot,
+  id: string,
+  people: number
+) {
+  const next = normalizePeople(people);
+  if (next == null) return;
+  patchEntry(date, slot, id, (entry) => ({ ...entry, people: next }));
+}
+
+export function removeRecipeFromPlan(slug: string) {
+  const plan = readDatePlan();
+  let changed = false;
+  const next: DatePlan = {};
+
+  for (const [date, current] of Object.entries(plan)) {
     const breakfast = current.breakfast.filter(
       (entry) => !(entry.kind === "recipe" && entry.slug === slug)
     );
@@ -229,34 +441,58 @@ export function removeRecipeFromPlan(slug: string) {
     ) {
       changed = true;
     }
-    next[day] = {
+    const day: DayMeals = {
       breakfast,
       lunch,
       dinner,
       dessert,
       dessertOpen: current.dessertOpen && dessert.length > 0,
     };
+    if (dayMealCount(day) > 0 || day.dessertOpen) {
+      next[date] = day;
+    }
   }
 
   if (changed) {
-    saveWeekPlan(next);
+    saveDatePlan(next);
   }
 }
 
-export function openDessert(day: PlanDay) {
-  updateDay(day, (current) => ({ ...current, dessertOpen: true }));
+export function openDessert(date: PlanDate) {
+  updateDay(date, (current) => ({ ...current, dessertOpen: true }));
 }
 
-export function clearDessert(day: PlanDay) {
-  updateDay(day, (current) => ({
+export function clearDessert(date: PlanDate) {
+  updateDay(date, (current) => ({
     ...current,
     dessert: [],
     dessertOpen: false,
   }));
 }
 
-const serverPlan = emptyPlan();
+export function listPlannedItems(
+  plan: DatePlan,
+  dates: PlanDate[]
+): PlannedItem[] {
+  const items: PlannedItem[] = [];
+  for (const date of dates) {
+    const day = getDayMeals(plan, date);
+    for (const slot of MEAL_SLOTS) {
+      for (const entry of day[slot]) {
+        items.push({ date, slot, entry });
+      }
+    }
+  }
+  return items;
+}
 
-export function useWeekPlan(): WeekPlan {
-  return useSyncExternalStore(subscribePlan, readWeekPlan, () => serverPlan);
+const serverPlan: DatePlan = {};
+
+/** @deprecated Prefer useDatePlan — kept name for fewer call-site edits during transition. */
+export function useWeekPlan(): DatePlan {
+  return useSyncExternalStore(subscribePlan, readDatePlan, () => serverPlan);
+}
+
+export function useDatePlan(): DatePlan {
+  return useWeekPlan();
 }

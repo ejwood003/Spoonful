@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { AppButton } from "@/components/app-button";
 
 /**
- * Shown on every home visit. Intentionally not persisted — the product asked
+ * Shown on every /landing visit. Intentionally not persisted — the product asked
  * for an early-prototype reminder each time, not a forever dismiss.
  */
 export function EarlyPrototypeModal() {
