@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import posthog from "posthog-js";
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
@@ -38,6 +39,10 @@ export function GroceryBoard() {
       area.remove();
       setCopied(true);
     }
+    posthog.capture("grocery_list_copied", {
+      item_count: items.length,
+      pending_item_count: needed,
+    });
     window.setTimeout(() => setCopied(false), 2000);
   }
 
@@ -78,6 +83,9 @@ export function GroceryBoard() {
           cancelLabel="Keep them"
           onConfirm={() => {
             clearCheckedGrocery();
+            posthog.capture("grocery_items_cleared", {
+              item_count: checkedCount,
+            });
             setConfirmClear(false);
             notify("Cleared checked grocery items.");
           }}
@@ -169,7 +177,12 @@ function GroceryRow({ item }: { item: GroceryItem }) {
         <AppButton
           type="button"
           variant={item.checked ? "primary" : "secondary"}
-          onClick={() => toggleGroceryItem(item.id)}
+          onClick={() => {
+            toggleGroceryItem(item.id);
+            posthog.capture("grocery_item_checked", {
+              checked: !item.checked,
+            });
+          }}
         >
           {item.checked ? "Got it" : "Check off"}
         </AppButton>
