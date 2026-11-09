@@ -3,6 +3,7 @@
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Heart, ImagePlus, Link2, PenLine, Plus, Trash2 } from "lucide-react";
+import posthog from "posthog-js";
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
@@ -244,6 +245,21 @@ export function KeepRecipeForm({ initial }: { initial?: Recipe }) {
     };
 
     saveKeptRecipe(recipe);
+    posthog.capture(editing ? "recipe_updated" : "recipe_created", {
+      creation_method: urlNotice ? "url_import" : "manual",
+      has_photo: Boolean(recipe.photo),
+      ingredient_count: recipe.ingredients.length,
+      step_count: recipe.steps.length,
+      tag_count: recipe.tags.length,
+    });
+    posthog.logger.info("recipe saved", {
+      save_mode: editing ? "update" : "create",
+      creation_method: urlNotice ? "url_import" : "manual",
+      has_photo: Boolean(recipe.photo),
+      ingredient_count: recipe.ingredients.length,
+      step_count: recipe.steps.length,
+      tag_count: recipe.tags.length,
+    });
     notify(
       editing
         ? `Saved “${recipe.title}”.`
@@ -258,6 +274,7 @@ export function KeepRecipeForm({ initial }: { initial?: Recipe }) {
     }
     removeRecipeFromCatalog(initial.slug);
     removeRecipeFromPlan(initial.slug);
+    posthog.capture("recipe_deleted");
     notify(`Removed “${initial.title}” from your catalogue.`);
     router.push("/kitchen");
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ChefHat } from "lucide-react";
+import posthog from "posthog-js";
 import { AppButton } from "@/components/app-button";
 import {
   clearCookProgress,
@@ -220,7 +221,17 @@ export function CookMode({
             {hasSteps && isLast ? (
               <AppButton
                 href={recipeHref}
-                onClick={() => clearCookProgress(live.slug)}
+                onClick={() => {
+                  clearCookProgress(live.slug);
+                  posthog.capture("cooking_completed", {
+                    servings: serves,
+                    step_count: total,
+                  });
+                  posthog.logger.info("cooking completed", {
+                    servings: serves,
+                    step_count: total,
+                  });
+                }}
               >
                 <Check className="size-4" />
                 Done

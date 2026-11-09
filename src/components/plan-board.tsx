@@ -9,6 +9,7 @@ import {
   ShoppingBasket,
   Users,
 } from "lucide-react";
+import posthog from "posthog-js";
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
@@ -205,6 +206,10 @@ export function PlanBoard({ addSlug }: { addSlug?: string }) {
   function placePending(date: PlanDate) {
     if (!pending) return;
     addPlanRecipe(date, slot, pending.slug);
+    posthog.capture("meal_plan_item_added", {
+      item_type: "recipe",
+      meal_slot: slot,
+    });
     setPlaced(`${SLOT_LABELS[slot]} · ${formatPlanDayLabel(date, "short")}`);
     setExpanded(date);
   }
@@ -805,6 +810,10 @@ function RecipeSearchAdd({
   function choose(option: SearchOption) {
     if (option.kind === "recipe") {
       addPlanRecipe(date, slot, option.recipe.slug);
+      posthog.capture("meal_plan_item_added", {
+        item_type: "recipe",
+        meal_slot: slot,
+      });
       reset();
       return;
     }
@@ -814,6 +823,10 @@ function RecipeSearchAdd({
       return;
     }
     addPlanCustom(date, slot, option.text);
+    posthog.capture("meal_plan_item_added", {
+      item_type: "custom",
+      meal_slot: slot,
+    });
     reset();
   }
 
@@ -977,6 +990,10 @@ function MealRow({
           cancelLabel="Keep it"
           onConfirm={() => {
             removePlanEntry(date, slot, entry.id);
+            posthog.capture("meal_plan_item_removed", {
+              item_type: entry.kind === "recipe" ? "recipe" : "custom",
+              meal_slot: slot,
+            });
             setConfirmRemove(false);
             notify(
               `Removed from ${SLOT_LABELS[slot]} · ${formatPlanDayLabel(date, "short")}.`

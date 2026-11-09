@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import posthog from "posthog-js";
 import { AppButton } from "@/components/app-button";
 import { applyProfileName } from "@/components/theme-provider";
 import { Field, Panel } from "@/design-system";
@@ -40,15 +41,42 @@ export function LoginForm() {
       return;
     }
 
+    const userEmail = email.trim().toLowerCase();
+    const userName = name.trim();
+
+    let previousUser = "";
+
     setPending(true);
     try {
-      window.localStorage.setItem("kept-user", email.trim().toLowerCase());
+      previousUser = window.localStorage.getItem("kept-user") ?? "";
+      window.localStorage.setItem("kept-user", userEmail);
       if (isSignup) {
-        applyProfileName(name.trim());
+        applyProfileName(userName);
       }
     } catch {
       // Storage can be blocked (private window). The prototype still continues.
     }
+
+    if (
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      if (previousUser && previousUser !== userEmail) {
+        posthog.reset();
+      }
+      posthog.identify(userEmail, {
+        email: userEmail,
+        ...(isSignup ? { name: userName } : {}),
+      });
+      posthog.capture(isSignup ? "account_created" : "user_signed_in", {
+        authentication_method: "password",
+      });
+      posthog.logger.info("account authentication completed", {
+        authentication_method: "password",
+        account_flow: isSignup ? "signup" : "signin",
+      });
+    }
+
     router.push("/kitchen");
   }
 

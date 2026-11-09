@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect } from "react";
+import posthog from "posthog-js";
 
 export const themes = [
   { id: "peach", label: "Coral" },
@@ -12,9 +13,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const theme = window.localStorage.getItem("kept-theme") ?? "peach";
     const name = window.localStorage.getItem("kept-name") ?? "";
+    const email = window.localStorage.getItem("kept-user") ?? "";
     document.documentElement.dataset.theme = theme;
     if (name) {
       document.documentElement.dataset.profileName = name;
+    }
+    if (
+      email &&
+      process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN &&
+      process.env.NEXT_PUBLIC_POSTHOG_HOST
+    ) {
+      posthog.identify(email, {
+        email,
+        ...(name ? { name } : {}),
+      });
     }
   }, []);
   return children;

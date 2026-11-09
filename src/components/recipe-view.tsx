@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChefHat, Heart, Pencil, Share2, ShoppingBasket, Trash2 } from "lucide-react";
+import posthog from "posthog-js";
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
@@ -83,6 +84,10 @@ export function RecipeCook({ recipe }: { recipe: Recipe }) {
       kind,
       note: logNote.trim() || (kind === "made" ? `Made for ${serves}` : `Plan for ${serves}`),
     });
+    posthog.capture("recipe_cook_logged", {
+      cook_status: kind,
+      servings: serves,
+    });
     setLogNote("");
   }
 
@@ -111,7 +116,15 @@ export function RecipeCook({ recipe }: { recipe: Recipe }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        <AppButton href={`/recipe/${live.slug}/cook?serves=${serves}`}>
+        <AppButton
+          href={`/recipe/${live.slug}/cook?serves=${serves}`}
+          onClick={() =>
+            posthog.capture("cooking_started", {
+              servings: serves,
+              step_count: live.steps.length,
+            })
+          }
+        >
           <ChefHat className="size-4" />
           Make this recipe
         </AppButton>
@@ -140,6 +153,10 @@ export function RecipeCook({ recipe }: { recipe: Recipe }) {
                 recipeTitle: live.title,
               }))
             );
+            posthog.capture("recipe_added_to_grocery_list", {
+              ingredient_count: scaledIngredients.length,
+              servings: serves,
+            });
             setListed(true);
           }}
         >
