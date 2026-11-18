@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, ChefHat } from "lucide-react";
 import { AppButton } from "@/components/app-button";
+import { Badge } from "@/components/ui/badge";
 import {
   clearCookProgress,
   readCookProgress,
@@ -59,10 +60,15 @@ export function CookMode({
   const hasSteps = total > 0;
   const safeIndex = hasSteps ? Math.min(index, total - 1) : 0;
   const currentStep = hasSteps ? steps[safeIndex] : null;
+  const nextStep = hasSteps && safeIndex < total - 1 ? steps[safeIndex + 1] : null;
   const progress = hasSteps ? ((safeIndex + 1) / total) * 100 : 0;
   const isFirst = safeIndex <= 0;
   const isLast = hasSteps && safeIndex >= total - 1;
   const recipeHref = `/recipe/${live.slug}`;
+  const isMyVersion =
+    live.notes.length > 0 ||
+    Boolean(live.whyKept.trim()) ||
+    live.ingredients.some((item) => item.changed);
 
   useEffect(() => {
     setIndex(initialStepIndex(live.slug, total));
@@ -142,11 +148,17 @@ export function CookMode({
         </div>
         <div className="min-w-0 flex-1">
           <p className="ds-kicker">Cook mode</p>
-          <h1 className="ds-title">{live.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="ds-title">{live.title}</h1>
+            {isMyVersion ? <Badge variant="secondary">My version</Badge> : null}
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             {live.time}
             {` · amounts for ${serves} ${serves === 1 ? "person" : "people"}`}
           </p>
+          {isMyVersion && live.whyKept ? (
+            <p className="mt-2 text-sm text-foreground/80">{live.whyKept}</p>
+          ) : null}
         </div>
       </header>
 
@@ -171,10 +183,25 @@ export function CookMode({
                       {item.kept}
                     </span>
                   </div>
+                  {item.changed ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Blog called for {item.original}
+                    </p>
+                  ) : null}
                 </li>
               ))}
             </ul>
           )}
+          {live.notes.length > 0 ? (
+            <div className="mt-5 border-t border-border pt-4">
+              <h3 className="text-sm font-medium">Your notes</h3>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+                {live.notes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </aside>
 
         <section className="ds-panel flex min-h-[18rem] flex-col p-6 sm:p-8">
@@ -192,6 +219,16 @@ export function CookMode({
                   {currentStep}
                 </p>
               </div>
+              {nextStep ? (
+                <div className="mt-6 rounded-2xl border border-border/80 bg-secondary/40 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Next · step {safeIndex + 2}
+                  </p>
+                  <p className="mt-1 text-sm leading-snug text-muted-foreground">
+                    {nextStep}
+                  </p>
+                </div>
+              ) : null}
             </>
           ) : (
             <div className="flex flex-1 flex-col items-start justify-center gap-3">

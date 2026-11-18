@@ -2,6 +2,10 @@ import { useSyncExternalStore } from "react";
 
 export const MEAL_SLOTS = ["dinner", "lunch", "breakfast", "dessert"] as const;
 
+/** Slots hidden until the user adds them (dinner stays always on). */
+export const OPTIONAL_MEAL_SLOTS = ["lunch", "breakfast", "dessert"] as const;
+export type OptionalMealSlot = (typeof OPTIONAL_MEAL_SLOTS)[number];
+
 export const SLOT_LABELS: Record<MealSlot, string> = {
   breakfast: "Breakfast",
   lunch: "Lunch",
@@ -35,8 +39,32 @@ export type DayMeals = {
   lunch: MealEntry[];
   dinner: MealEntry[];
   dessert: MealEntry[];
+  lunchOpen: boolean;
+  breakfastOpen: boolean;
   dessertOpen: boolean;
 };
+
+const SLOT_OPEN_KEY: Record<
+  OptionalMealSlot,
+  "lunchOpen" | "breakfastOpen" | "dessertOpen"
+> = {
+  lunch: "lunchOpen",
+  breakfast: "breakfastOpen",
+  dessert: "dessertOpen",
+};
+
+function isOptionalMealSlot(slot: MealSlot): slot is OptionalMealSlot {
+  return (OPTIONAL_MEAL_SLOTS as readonly string[]).includes(slot);
+}
+
+function withSlotOpen(day: DayMeals, slot: MealSlot): DayMeals {
+  if (!isOptionalMealSlot(slot)) return day;
+  return { ...day, [SLOT_OPEN_KEY[slot]]: true };
+}
+
+function dayHasOpenOptional(day: DayMeals) {
+  return day.lunchOpen || day.breakfastOpen || day.dessertOpen;
+}
 
 /** Sparse map of ISO date → meals */
 export type DatePlan = Record<PlanDate, DayMeals>;
@@ -63,8 +91,14 @@ export function emptyDay(): DayMeals {
     lunch: [],
     dinner: [],
     dessert: [],
+    lunchOpen: false,
+    breakfastOpen: false,
     dessertOpen: false,
   };
+}
+
+export function isMealSlotOpen(day: DayMeals, slot: OptionalMealSlot) {
+  return day[SLOT_OPEN_KEY[slot]] || day[slot].length > 0;
 }
 
 function pad(n: number) {
@@ -235,12 +269,16 @@ function normalizeDay(value: unknown): DayMeals {
     return emptyDay();
   }
   const day = value as Partial<DayMeals>;
+  const breakfast = asEntries(day.breakfast);
+  const lunch = asEntries(day.lunch);
   const dessert = asEntries(day.dessert);
   return {
-    breakfast: asEntries(day.breakfast),
-    lunch: asEntries(day.lunch),
+    breakfast,
+    lunch,
     dinner: asEntries(day.dinner),
     dessert,
+    lunchOpen: Boolean(day.lunchOpen) || lunch.length > 0,
+    breakfastOpen: Boolean(day.breakfastOpen) || breakfast.length > 0,
     dessertOpen: Boolean(day.dessertOpen) || dessert.length > 0,
   };
 }
@@ -258,10 +296,7 @@ function normalizePlan(parsed: unknown): DatePlan {
   for (const [key, value] of Object.entries(source)) {
     if (!isISODateKey(key)) continue;
     const day = normalizeDay(value);
-    if (
-      dayMealCount(day) === 0 &&
-      !day.dessertOpen
-    ) {
+    if (dayMealCount(day) === 0 && !dayHasOpenOptional(day)) {
       continue;
     }
     next[key] = day;
@@ -324,7 +359,7 @@ function updateDay(date: PlanDate, recipe: (current: DayMeals) => DayMeals) {
   const plan = readDatePlan();
   const nextDay = recipe(getDayMeals(plan, date));
   const next = { ...plan };
-  if (dayMealCount(nextDay) === 0 && !nextDay.dessertOpen) {
+  if (dayMealCount(nextDay) === 0 && !dayHasOpenOptional(nextDay)) {
     delete next[date];
   } else {
     next[date] = nextDay;
@@ -336,42 +371,48 @@ export function addPlanRecipe(date: PlanDate, slot: MealSlot, slug: string) {
   updateDay(date, (current) => {
     const entries = current[slot];
     if (entries.some((entry) => entry.kind === "recipe" && entry.slug === slug)) {
-      return slot === "dessert" ? { ...current, dessertOpen: true } : current;
+      return withSlotOpen(current, slot);
     }
-    return {
-      ...current,
-      dessertOpen: current.dessertOpen || slot === "dessert",
-      [slot]: [
-        ...entries,
-        {
-          id: newId(),
-          kind: "recipe" as const,
-          slug,
-          people: null,
-          counted: true,
-        },
-      ],
-    };
+    return withSlotOpen(
+      {
+        ...current,
+        [slot]: [
+          ...entries,
+          {
+            id: newId(),
+            kind: "recipe" as const,
+            slug,
+            people: null,
+            counted: true,
+          },
+        ],
+      },
+      slot
+    );
   });
 }
 
 export function addPlanCustom(date: PlanDate, slot: MealSlot, text: string) {
   const note = text.trim();
   if (!note) return;
-  updateDay(date, (current) => ({
-    ...current,
-    dessertOpen: current.dessertOpen || slot === "dessert",
-    [slot]: [
-      ...current[slot],
+  updateDay(date, (current) =>
+    withSlotOpen(
       {
-        id: newId(),
-        kind: "note" as const,
-        text: note,
-        people: null,
-        counted: true,
+        ...current,
+        [slot]: [
+          ...current[slot],
+          {
+            id: newId(),
+            kind: "note" as const,
+            text: note,
+            people: null,
+            counted: true,
+          },
+        ],
       },
-    ],
-  }));
+      slot
+    )
+  );
 }
 
 export function removePlanEntry(date: PlanDate, slot: MealSlot, id: string) {
@@ -446,9 +487,11 @@ export function removeRecipeFromPlan(slug: string) {
       lunch,
       dinner,
       dessert,
+      lunchOpen: current.lunchOpen && lunch.length > 0,
+      breakfastOpen: current.breakfastOpen && breakfast.length > 0,
       dessertOpen: current.dessertOpen && dessert.length > 0,
     };
-    if (dayMealCount(day) > 0 || day.dessertOpen) {
+    if (dayMealCount(day) > 0 || dayHasOpenOptional(day)) {
       next[date] = day;
     }
   }
@@ -458,16 +501,26 @@ export function removeRecipeFromPlan(slug: string) {
   }
 }
 
-export function openDessert(date: PlanDate) {
-  updateDay(date, (current) => ({ ...current, dessertOpen: true }));
+export function openMealSlot(date: PlanDate, slot: OptionalMealSlot) {
+  updateDay(date, (current) => withSlotOpen(current, slot));
 }
 
-export function clearDessert(date: PlanDate) {
+/** @deprecated Prefer openMealSlot("dessert") */
+export function openDessert(date: PlanDate) {
+  openMealSlot(date, "dessert");
+}
+
+export function clearMealSlot(date: PlanDate, slot: OptionalMealSlot) {
   updateDay(date, (current) => ({
     ...current,
-    dessert: [],
-    dessertOpen: false,
+    [slot]: [],
+    [SLOT_OPEN_KEY[slot]]: false,
   }));
+}
+
+/** @deprecated Prefer clearMealSlot("dessert") */
+export function clearDessert(date: PlanDate) {
+  clearMealSlot(date, "dessert");
 }
 
 export function listPlannedItems(

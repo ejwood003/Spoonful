@@ -99,7 +99,7 @@ export function KitchenBoard({
 
   return (
     <>
-      <section className="kitchen-hero" aria-label="Recipes catalogue">
+      <section className="kitchen-hero" aria-label="My recipes">
         <Image
           src="/kitchen-food.jpg"
           alt=""
@@ -110,10 +110,10 @@ export function KitchenBoard({
         />
         <div className="kitchen-hero-scrim" aria-hidden="true" />
         <div className="kitchen-hero-content">
-          <h1 className="text-[clamp(1.75rem,3vw+1rem,2.5rem)]">Recipes</h1>
+          <h1 className="text-[clamp(1.75rem,3vw+1rem,2.5rem)]">My recipes</h1>
           <p className="kitchen-hero-lede mt-2">
-            Your catalogue. Find a recipe you already made work — by folder, tag,
-            favorite, name, or an ingredient — then open it to cook.
+            Your personal catalogue. Find a recipe you already made work — by
+            folder, tag, favorite, name, or an ingredient — then open it to cook.
           </p>
           <form
             action="/kitchen"

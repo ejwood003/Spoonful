@@ -15,20 +15,22 @@ import { ConfirmPanel } from "@/components/confirm-panel";
 import { fieldClass, fieldCompactClass, fieldGrowClass } from "@/design-system";
 import {
   MEAL_SLOTS,
+  OPTIONAL_MEAL_SLOTS,
   SLOT_LABELS,
   WEEKDAY_LABELS,
   addPlanCustom,
   addPlanRecipe,
   calendarWeeks,
-  clearDessert,
+  clearMealSlot,
   daysInRange,
   defaultPlanWindow,
   effectivePeople,
   entryIsCounted,
   formatPlanDayLabel,
   getDayMeals,
+  isMealSlotOpen,
   listPlannedItems,
-  openDessert,
+  openMealSlot,
   removePlanEntry,
   setPlanEntryCounted,
   setPlanEntryPeople,
@@ -167,14 +169,31 @@ export function PlanBoard({ addSlug }: { addSlug?: string }) {
   useEffect(() => {
     const windowDefaults = defaultPlanWindow();
     const nextWeeks = calendarWeeks();
+    const calDates = [...nextWeeks[0], ...nextWeeks[1]];
+    const calMin = calDates[0] ?? windowDefaults.from;
+    const calMax = calDates[calDates.length - 1] ?? windowDefaults.to;
     const storedFrom = window.localStorage.getItem(FROM_KEY);
     const storedTo = window.localStorage.getItem(TO_KEY);
     const now = toISODate(new Date());
 
+    const clampToCalendar = (value: string | null, fallback: PlanDate) => {
+      if (!isPlanDate(value)) return fallback;
+      if (value < calMin) return calMin;
+      if (value > calMax) return calMax;
+      return value;
+    };
+
+    let nextFrom = clampToCalendar(storedFrom, windowDefaults.from);
+    let nextTo = clampToCalendar(storedTo, windowDefaults.to);
+    if (nextFrom > nextTo) {
+      nextFrom = calMin;
+      nextTo = calMax;
+    }
+
     setWeeks(nextWeeks);
     setToday(now);
-    setFromDay(isPlanDate(storedFrom) ? storedFrom : windowDefaults.from);
-    setToDay(isPlanDate(storedTo) ? storedTo : windowDefaults.to);
+    setFromDay(nextFrom);
+    setToDay(nextTo);
     setPeople(String(readDefaultPeople()));
     setExpanded(now);
     setHydrated(true);
@@ -184,19 +203,42 @@ export function PlanBoard({ addSlug }: { addSlug?: string }) {
     () => [...weeks[0], ...weeks[1]],
     [weeks]
   );
-
-  useEffect(() => {
-    if (!hydrated || !fromDay || !toDay) return;
-    applyDefaultPeople(defaultPeople);
-    window.localStorage.setItem(FROM_KEY, fromDay);
-    window.localStorage.setItem(TO_KEY, toDay);
-  }, [hydrated, defaultPeople, fromDay, toDay]);
-
-  const range = fromDay && toDay ? daysInRange(fromDay, toDay) : [];
-  const upcoming = listPlannedItems(plan, range);
-  const needs = ingredientNeedsFromItems(upcoming, recipes, defaultPeople);
+  const calendarDateSet = useMemo(
+    () => new Set(calendarDates),
+    [calendarDates]
+  );
   const rangeMin = calendarDates[0] || fromDay;
   const rangeMax = calendarDates[calendarDates.length - 1] || toDay;
+
+  useEffect(() => {
+    if (!hydrated || !fromDay || !toDay || !rangeMin || !rangeMax) return;
+    // Keep From/To inside the visible calendar window as weeks roll forward.
+    let nextFrom = fromDay;
+    let nextTo = toDay;
+    if (nextFrom < rangeMin) nextFrom = rangeMin;
+    if (nextFrom > rangeMax) nextFrom = rangeMin;
+    if (nextTo > rangeMax) nextTo = rangeMax;
+    if (nextTo < rangeMin) nextTo = rangeMax;
+    if (nextFrom > nextTo) {
+      nextFrom = rangeMin;
+      nextTo = rangeMax;
+    }
+    if (nextFrom !== fromDay) setFromDay(nextFrom);
+    if (nextTo !== toDay) setToDay(nextTo);
+    applyDefaultPeople(defaultPeople);
+    window.localStorage.setItem(FROM_KEY, nextFrom);
+    window.localStorage.setItem(TO_KEY, nextTo);
+  }, [hydrated, defaultPeople, fromDay, toDay, rangeMin, rangeMax]);
+
+  // Coming up / needs only for dates on the visual calendar (and in From–To).
+  const range = useMemo(() => {
+    if (!fromDay || !toDay) return [] as PlanDate[];
+    return daysInRange(fromDay, toDay).filter((date) =>
+      calendarDateSet.has(date)
+    );
+  }, [fromDay, toDay, calendarDateSet]);
+  const upcoming = listPlannedItems(plan, range);
+  const needs = ingredientNeedsFromItems(upcoming, recipes, defaultPeople);
 
   function toggleDay(date: PlanDate) {
     setExpanded((current) => (current === date ? null : date));
@@ -394,8 +436,8 @@ export function PlanBoard({ addSlug }: { addSlug?: string }) {
                 <ul className="plan-needs-list">
                   {needs.map((item) => (
                     <li key={`${item.name}-${item.amount}`}>
-                      <span className="plan-needs-amount">{item.amount}</span>
                       <span className="plan-needs-name">{item.name}</span>
+                      <span className="plan-needs-amount">{item.amount}</span>
                     </li>
                   ))}
                 </ul>
@@ -621,39 +663,46 @@ function DayEditor({
         </AppButton>
       </header>
 
-      {MEAL_SLOTS.filter((item) => item !== "dessert").map((item) => (
-        <MealSlotEditor
-          key={item}
-          date={date}
-          slot={item}
-          entries={day[item]}
-          recipes={recipes}
-        />
-      ))}
+      <MealSlotEditor
+        date={date}
+        slot="dinner"
+        entries={day.dinner}
+        recipes={recipes}
+      />
 
-      {day.dessertOpen ? (
-        <MealSlotEditor
-          date={date}
-          slot="dessert"
-          entries={day.dessert}
-          recipes={recipes}
-          onClearSlot={() => clearDessert(date)}
-          clearLabel="Remove dessert"
-          clearTitle="Remove dessert?"
-          clearDescription={`Close dessert for ${formatPlanDayLabel(date)} and clear anything listed there.`}
-          clearConfirmLabel="Remove dessert"
-        />
-      ) : (
-        <div className="plan-slot plan-slot-add">
-          <AppButton
-            type="button"
-            variant="secondary"
-            onClick={() => openDessert(date)}
-          >
-            Add dessert
-          </AppButton>
-        </div>
+      {OPTIONAL_MEAL_SLOTS.filter((slot) => isMealSlotOpen(day, slot)).map(
+        (slot) => (
+          <MealSlotEditor
+            key={slot}
+            date={date}
+            slot={slot}
+            entries={day[slot]}
+            recipes={recipes}
+            onClearSlot={() => clearMealSlot(date, slot)}
+            clearLabel={`Remove ${SLOT_LABELS[slot].toLowerCase()}`}
+            clearTitle={`Remove ${SLOT_LABELS[slot].toLowerCase()}?`}
+            clearDescription={`Close ${SLOT_LABELS[slot].toLowerCase()} for ${formatPlanDayLabel(date)} and clear anything listed there.`}
+            clearConfirmLabel={`Remove ${SLOT_LABELS[slot].toLowerCase()}`}
+          />
+        )
       )}
+
+      {OPTIONAL_MEAL_SLOTS.some((slot) => !isMealSlotOpen(day, slot)) ? (
+        <div className="plan-slot plan-slot-add flex flex-wrap gap-2">
+          {OPTIONAL_MEAL_SLOTS.filter((slot) => !isMealSlotOpen(day, slot)).map(
+            (slot) => (
+              <AppButton
+                key={slot}
+                type="button"
+                variant="secondary"
+                onClick={() => openMealSlot(date, slot)}
+              >
+                Add {SLOT_LABELS[slot].toLowerCase()}
+              </AppButton>
+            )
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -719,9 +768,7 @@ function MealSlotEditor({
             onClearSlot();
             setConfirmClear(false);
             notify(
-              slot === "dessert"
-                ? `Dessert removed for ${formatPlanDayLabel(date, "short")}.`
-                : `Cleared ${SLOT_LABELS[slot]} for ${formatPlanDayLabel(date, "short")}.`
+              `${SLOT_LABELS[slot]} removed for ${formatPlanDayLabel(date, "short")}.`
             );
           }}
           onCancel={() => setConfirmClear(false)}
@@ -772,6 +819,8 @@ function RecipeSearchAdd({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  // Require intentional pick (arrow/hover) or typed query — never Add on empty → first recipe.
+  const [picked, setPicked] = useState(false);
   const taken = new Set(takenSlugs);
   const trimmed = query.trim();
   const normalized = trimmed.toLowerCase();
@@ -795,11 +844,17 @@ function RecipeSearchAdd({
     { kind: "custom", text: trimmed },
   ];
   const customIndex = options.length - 1;
+  const highlighted = options[highlight];
+  const canSubmit =
+    highlighted?.kind === "custom"
+      ? trimmed.length > 0
+      : Boolean(highlighted) && (picked || normalized.length > 0);
 
   function reset() {
     setQuery("");
     setOpen(false);
     setHighlight(0);
+    setPicked(false);
   }
 
   function choose(option: SearchOption) {
@@ -811,6 +866,7 @@ function RecipeSearchAdd({
     if (!option.text) {
       setOpen(true);
       setHighlight(customIndex);
+      setPicked(true);
       return;
     }
     addPlanCustom(date, slot, option.text);
@@ -826,6 +882,7 @@ function RecipeSearchAdd({
             setQuery(event.target.value);
             setOpen(true);
             setHighlight(0);
+            setPicked(false);
           }}
           onFocus={() => setOpen(true)}
           onBlur={() => {
@@ -835,6 +892,7 @@ function RecipeSearchAdd({
             if (event.key === "ArrowDown") {
               event.preventDefault();
               setOpen(true);
+              setPicked(true);
               setHighlight((value) =>
                 Math.min(value + 1, options.length - 1)
               );
@@ -842,13 +900,14 @@ function RecipeSearchAdd({
             }
             if (event.key === "ArrowUp") {
               event.preventDefault();
+              setPicked(true);
               setHighlight((value) => Math.max(value - 1, 0));
               return;
             }
             if (event.key === "Enter") {
               event.preventDefault();
-              const option = options[highlight];
-              if (option) choose(option);
+              if (!canSubmit || !highlighted) return;
+              choose(highlighted);
               return;
             }
             if (event.key === "Escape") {
@@ -861,21 +920,6 @@ function RecipeSearchAdd({
           aria-expanded={open}
           className={fieldGrowClass}
         />
-        <AppButton
-          type="button"
-          variant="secondary"
-          disabled={
-            !options[highlight] ||
-            (options[highlight]?.kind === "custom" && !trimmed)
-          }
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            const option = options[highlight];
-            if (option) choose(option);
-          }}
-        >
-          {options[highlight]?.kind === "custom" ? "Add Custom" : "Add Recipe"}
-        </AppButton>
       </div>
 
       {open ? (
@@ -891,7 +935,10 @@ function RecipeSearchAdd({
                   .filter(Boolean)
                   .join(" ")}
                 onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => setHighlight(index)}
+                onMouseEnter={() => {
+                  setHighlight(index);
+                  setPicked(true);
+                }}
                 onClick={() => choose({ kind: "recipe", recipe })}
               >
                 <span aria-hidden>{recipe.emoji}</span>
@@ -921,7 +968,10 @@ function RecipeSearchAdd({
                 .filter(Boolean)
                 .join(" ")}
               onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setHighlight(customIndex)}
+              onMouseEnter={() => {
+                setHighlight(customIndex);
+                setPicked(true);
+              }}
               onClick={() => choose({ kind: "custom", text: trimmed })}
             >
               <span aria-hidden>✏️</span>

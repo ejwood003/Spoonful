@@ -97,8 +97,12 @@ export function HomeBoard() {
             {hasResume ? "Pick up where you left off" : "Ready when you are"}
           </h1>
           <p className="landing-lede mt-4 max-w-md text-lg leading-relaxed">
+            Spoonful keeps your recipe versions organized so you can plan ahead
+            and cook with confidence.
+          </p>
+          <p className="mt-2 max-w-md text-base leading-relaxed text-white/80">
             {hasResume
-              ? "You have a cook-through in progress. Jump back in, or head to your catalogue."
+              ? "You have a cook-through in progress. Jump back in, or open My recipes."
               : "Open a recipe you already keep, add a new one, or plan the week ahead."}
           </p>
 
@@ -132,7 +136,7 @@ export function HomeBoard() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <AppButton href="/kitchen" className="w-full sm:w-auto">
               <BookOpen className="size-4" />
-              Recipes
+              My recipes
             </AppButton>
             <AppButton
               href="/keep"

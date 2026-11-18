@@ -7,6 +7,7 @@ import { ChefHat, Heart, Pencil, Share2, ShoppingBasket, Trash2 } from "lucide-r
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
+import { Badge } from "@/components/ui/badge";
 import { fieldClass, fieldCompactClass } from "@/design-system";
 import { addIngredientsToGrocery } from "@/lib/grocery-store";
 import {
@@ -48,6 +49,10 @@ export function RecipeCook({ recipe }: { recipe: Recipe }) {
     ...item,
     kept: scaleAmount(item.kept, factor),
   }));
+  const isMyVersion =
+    live.notes.length > 0 ||
+    Boolean(live.whyKept.trim()) ||
+    live.ingredients.some((item) => item.changed);
 
   function toggleFavorite() {
     saveKeptRecipe({ ...live, favorite: !live.favorite });
@@ -102,11 +107,17 @@ export function RecipeCook({ recipe }: { recipe: Recipe }) {
           {live.emoji}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-[clamp(1.75rem,3vw+1rem,2.75rem)]">{live.title}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-[clamp(1.75rem,3vw+1rem,2.75rem)]">{live.title}</h1>
+            {isMyVersion ? <Badge variant="secondary">My version</Badge> : null}
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
             {live.time} · last cooked {live.lastCooked.toLowerCase()}
             {live.source ? ` · from ${live.source}` : ""}
           </p>
+          {isMyVersion && live.whyKept ? (
+            <p className="mt-2 text-sm text-foreground/80">{live.whyKept}</p>
+          ) : null}
         </div>
       </div>
 

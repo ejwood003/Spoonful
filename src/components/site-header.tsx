@@ -22,7 +22,7 @@ const links: {
   label: string;
   icon: typeof BookOpen;
 }[] = [
-  { id: "kitchen", href: "/kitchen", label: "Recipes", icon: BookOpen },
+  { id: "kitchen", href: "/kitchen", label: "My recipes", icon: BookOpen },
   { id: "keep", href: "/keep", label: "Add recipe", icon: Plus },
   { id: "plan", href: "/plan", label: "Plan ahead", icon: CalendarDays },
 ];
