@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import posthog from "posthog-js";
 import { useActionFeedback } from "@/components/action-feedback";
 import { AppButton } from "@/components/app-button";
 import { ConfirmPanel } from "@/components/confirm-panel";
@@ -45,7 +46,11 @@ export function PantryBoard() {
     .sort((a, b) => Number(a.kind === "almost") - Number(b.kind === "almost"));
 
   function addItem() {
+    if (!draft.trim()) {
+      return;
+    }
     addPantryItem(draft);
+    posthog.capture("pantry_item_added");
     setDraft("");
   }
 
@@ -167,6 +172,9 @@ export function PantryBoard() {
                           variant="secondary"
                           onClick={() => {
                             addMissing(match.recipe, match.missing);
+                            posthog.capture("pantry_missing_items_added", {
+                              item_count: match.missing.length,
+                            });
                             setAdded(match.recipe.title);
                           }}
                         >

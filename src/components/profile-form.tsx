@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import posthog from "posthog-js";
 import { AppButton } from "@/components/app-button";
 import { fieldClass, fieldCompactClass } from "@/design-system";
 import {
@@ -56,6 +57,10 @@ export function ProfileForm() {
         applyProfileName(liveName.trim());
         applyTheme(liveTheme);
         applyDefaultPeople(Number(livePeople));
+        posthog.capture("profile_updated", {
+          default_people: Number(livePeople),
+          theme: liveTheme,
+        });
         setSaved(true);
       }}
     >
