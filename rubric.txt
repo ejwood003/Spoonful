@@ -1,0 +1,96 @@
+Final Presentation
+What to Present
+Your team's final presentation will be on one of the final class days of the semester. Sign up for a presentation date using the link on the schedule if you have not already done so.
+
+Your presentation should be 20 minutes maximum, with another 3 minutes for questions at the end. It should include the following at a minimum:
+
+Intro and Discovery Research
+Motivation: Start with a compelling anecdote. Provide a clear problem/opportunity statement.
+Exposition of unique value in terms of what the next-best alternatives lack.
+Identification of core user outcomes initially targeted and ultimately targeted.
+Detailed description of discovery research conducted. We will be looking for the quality of the research, so don't gloss over it or we'll have no way of knowing how good it was.
+Ideation
+Identification of underlying root user needs, key persona traits, and design choices that resulted from discovery research.
+Clearly demonstrating using qualitative data from actual users demanded design choices and target user outcomes. It should be clear these did not come from the design team.
+1-2 Personas, targeted for the project.
+Clearly demonstrating using actual qualitative data how personal variables came from discovery research, not the design team.
+Prototyping
+Experience Map(s) and/or User Flows and/or Storyboards
+At least 5 minutes where everyone in the room is trying out a user task on your prototype.
+Prototype demonstration and exposition, including how the design:
+implements the core design components meant to impact the target user outcomes, and
+implements a universal design principle such as the IKEA effect or Gall's Law.
+Implements one of the top 10 usability principles covered in class, in a way that is important for your design, and
+Uses a design system that has a purposeful language and personality.
+How feature flagging was used.
+Mention how it measures up to WCAG standards.
+User Testing and Analyses
+Defense and justification of user test tasks & survey questions and/or other measures.
+Note how you used "set the stage" content to de-bias user data.
+Comprehensive description of the analyses conducted
+Well-crafted depiction of quantitative and qualitative results, with an emphasis on clarity and convincingness.
+The results' implications for your design.
+Key Takeaways
+Frank discussion of iterations, project success, limitations, and most impactful next steps to take if the project were to continue.
+What ethical considerations might affect the design or design process going forward?
+Bonus (+10)
+Bonus points if each member of the group adds your prototype/MVP paired with a case study to a personal portfolio connected to Linkedin. This is not part of the presentation. Submit links to the portfolio item for each team member if you want the bonus points.
+
+Submission
+Key Rule: Prior to presenting, submit all presentation materials to Canvas.
+
+Grading
+The quality of each presentation will be assessed as to how well they reflect all concepts taught throughout the semester, regardless of whether a given concept is explicitly mentioned in the rubric below.
+
+CRITICAL TO UNDERSTAND: Although this is a group assignment, every team member will receive a different grade. Professionalism, presentation quality, and more will be taken into account, but also PEER EVALUATIONS. The peer evaluations have a significant impact on final presentation grades, reflecting the entire semester, not just the final presentation. 
+
+Note: An a priori rubric cannot capture every possible problem or ingenuity on a creative work or a novel investigative project. This rubric is a guideline--not an absolute contract.
+
+Rubric
+IS 551 Final Presentation
+IS 551 Final Presentation
+Criteria	Ratings	Pts
+This criterion is linked to a Learning OutcomeProfessionalism (including attendance & feedback)
+Follows Instructions; Attendance & Feedback to Peers; Cohesion, Flow, Focus; Genuine, Embraces Uncertainty; Targets a strictly professional and technical audience who is evaluating the validity and viability of your project
+20 pts
+Full marks
+10 pts
+Partial
+0 pts
+Missing
+20 pts
+This criterion is linked to a Learning OutcomeProblem Domain and Design Exposition
+Clear, Compelling, and Comprehensive Discovery Research; User data clearly maps to user outcomes and design choices; Insightful, Effective, and Useful Persona(s) and experience Visualization(s)
+60 pts
+Full marks
+30 pts
+Partial
+0 pts
+Missing
+60 pts
+This criterion is linked to a Learning OutcomePrototype
+Appropriateness, Justification; Usability
+60 pts
+Full marks
+30 pts
+Partial
+0 pts
+Missing
+60 pts
+This criterion is linked to a Learning OutcomeEvaluation
+Quality of User Test design, including bias mitigation; Clear visual and statistical benchmark comparison; Quantitative and qualitative analyses effectively and powerfully test the design's core components against user outcomes (including intention to use) and do a compelling job of explaining what worked well and what needs improvement; Compelling, believable results; Insightful & Quality Next Steps & Ethical considerations
+60 pts
+Full marks
+30 pts
+Partial
+0 pts
+Missing
+60 pts
+This criterion is linked to a Learning OutcomeBonus (extra credit)
+Bonus points if each member of the group adds your prototype/MVP paired with a case study to a personal portfolio connected to Linkedin. This is not part of the presentation. Submit links to the portfolio item for each team member if you want the bonus points.
+10 pts
+Every member added it
+0 pts
+Not done
+10 pts
+Total Points: 210

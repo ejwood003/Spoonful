@@ -240,10 +240,28 @@ Additional Plan Ahead fixes from the same feedback wave: dinner-first optional m
 
 ---
 
-## 7. One-paragraph summary (optional Canvas blurb)
+## 7. Canvas blurb (changelog)
 
-After user testing, we revised Spoonful to reinforce what already worked and fix what blocked trust. We made personal recipe ownership visible with a **My version** treatment on recipe and cook screens (William), kept and labeled the personal find path as **My recipes** (Caleb), clarified purpose on home (Ethan), and improved cook context with a next-step peek while preserving step focus (George). Because Plan Ahead drew the most recording pain, we fixed the blind add-recipe bug, simplified expanded days around dinner with optional lunch/breakfast/dessert, aligned Coming up to the visible calendar, and made What you need name-first and scannable. Deeper recipe-import automation remains the next priority for real-world use but was scoped out of this demo-ready survey revision.
+Plan Ahead: stop Add Recipe from inserting the first/default recipe when nothing was chosen — shared recording bug (Ethan noted).
+
+Plan Ahead: remove the unused Add to plan button next to search; pick from the suggestion list instead — shared / Plan Ahead UX.
+
+Plan Ahead: dinner is the main slot; lunch, breakfast, and dessert open with Add buttons — Plan Ahead complexity from testing.
+
+Plan Ahead: Coming up only shows meals on the visible calendar (this week + next); past/off-grid dates drop off — Plan Ahead UX.
+
+Plan Ahead: What you need lists ingredient name first (bold), quantity after (not bold) — shopping-list scanability from testing.
+
+Plan Ahead: fix recipe suggestion dropdown showing calendar through it — Plan Ahead UX bug.
+
+My version badge + whyKept / notes / ingredient deltas on recipe and cook screens — William (IntentionToUse when people see their version is kept).
+
+Cook mode: keep one-step focus; add a next-step peek under the current step — George (cook mode tracking win; tunnel-vision feedback).
+
+Home: one purpose line (keep your versions organized → plan → cook) — Ethan (purpose clarity → recommend).
+
+Rename Recipes → My recipes in nav, kitchen, home, and back links — Caleb (strengthen find-saved / personal catalogue).
 
 ---
 
-*Document generated for the post–user-testing prototype revision. Companion handoff used during implementation: `AI_HANDOFF_user_testing_to_main_build.md`.*
+*Companion handoff: `AI_HANDOFF_user_testing_to_main_build.md`.*
