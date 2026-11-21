@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { SpoonIcon } from "@/design-system/components/spoon-icon";
 
 export function BrandMark({
   href = "/",
@@ -16,7 +16,14 @@ export function BrandMark({
       className="ds-mark"
     >
       <span className="ds-mark-icon">
-        <SpoonIcon className="size-5" />
+        <Image
+          src="/spoonful-icon.png"
+          alt=""
+          width={36}
+          height={36}
+          className="ds-mark-icon-img"
+          priority
+        />
       </span>
       <span className="ds-mark-word">Spoonful</span>
     </Link>
